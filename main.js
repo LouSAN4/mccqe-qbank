@@ -10,10 +10,16 @@ function box(parent,title){const c=el('section',undefined,'card');if(title)c.app
 function msg(parent,text,type='error'){parent.append(el('p',text,type));}
 function btn(parent,text,fn,cls=''){const b=el('button',text,cls);b.onclick=fn;parent.append(b);return b;}
 function field(parent,label,type='text',placeholder=''){const l=el('label',label);const i=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')i.type=type;i.placeholder=placeholder;l.append(i);parent.append(l);return i;}
-function header(){const h=el('header');h.append(el('strong','MCCQE1 · Banque de QCM'));if(state.session){const r=el('nav');btn(r,'Accueil',()=>{state.view='home';render()},'secondary');if(state.profile?.role==='admin')btn(r,'Administration',()=>{state.view='admin';render()},'secondary');btn(r,'Déconnexion',async()=>{await db.auth.signOut()},'secondary');h.append(r)}app.append(h)}
+function header(){const h=el('header');const identity=el('div',undefined,'identity');const mark=el('span','Q','identity-mark');mark.setAttribute('aria-hidden','true');const name=el('div');name.append(el('strong','MCCQE1'),el('span','Banque de QCM'));identity.append(mark,name);h.append(identity);if(state.session){const r=el('nav');btn(r,'Accueil',()=>{state.view='home';render()},'secondary');if(state.profile?.role==='admin')btn(r,'Administration',()=>{state.view='admin';render()},'secondary');btn(r,'Déconnexion',async()=>{await db.auth.signOut()},'secondary');h.append(r)}app.append(h)}
 async function refreshProfile(){const {data,error}=await db.from('profiles').select('id,email,role,status').eq('id',state.session.user.id).single();if(error)throw error;state.profile=data;}
 async function loadQuiz(){const [a,b]=await Promise.all([db.rpc('list_quiz'),db.rpc('my_results')]);if(a.error)throw a.error;if(b.error)throw b.error;state.questions=a.data||[];state.results=b.data||[];}
-function login(){const main=el('main');const c=box(main,'Connexion ou inscription');const email=field(c,'Adresse e-mail','email','vous@exemple.com');const pass=field(c,'Mot de passe','password','8 caractères minimum');const note=el('div');c.append(note);const actions=el('div',undefined,'inline');btn(actions,'Se connecter',async()=>{note.replaceChildren();const {error}=await db.auth.signInWithPassword({email:email.value.trim(),password:pass.value});if(error)msg(note,error.message)});btn(actions,"Demander l'inscription",async()=>{note.replaceChildren();const {error}=await db.auth.signUp({email:email.value.trim(),password:pass.value});msg(note,error?error.message:'Inscription enregistrée. Vérifiez votre e-mail si demandé, puis attendez la validation administrateur.',error?'error':'success')},'secondary');c.append(actions);c.append(el('p','Un compte nouvellement créé doit être approuvé par l’administrateur.','muted small'));main.append(c);app.append(main)}
+function login(){const main=el('main',undefined,'auth-layout');
+const intro=el('section',undefined,'auth-intro');
+intro.append(el('h1','Préparez votre EACMC en français'),el('p','Entraînez-vous par spécialité, consultez les corrections et reprenez là où vous en étiez.'));
+const topics=el('ul',undefined,'auth-topics');
+for(const topic of ['QCM par spécialité','Corrections détaillées','Progression sauvegardée']) topics.append(el('li',topic));
+intro.append(topics);main.append(intro);
+const c=box(main,'Connexion ou inscription');c.classList.add('auth-card');const email=field(c,'Adresse courriel','email','vous@exemple.com');email.autocomplete='username';const pass=field(c,'Mot de passe','password','8 caractères minimum');pass.autocomplete='current-password';const note=el('div');c.append(note);const actions=el('div',undefined,'inline');btn(actions,'Se connecter',async()=>{note.replaceChildren();const {error}=await db.auth.signInWithPassword({email:email.value.trim(),password:pass.value});if(error)msg(note,error.message)});btn(actions,"Demander l'inscription",async()=>{note.replaceChildren();const {error}=await db.auth.signUp({email:email.value.trim(),password:pass.value});msg(note,error?error.message:'Inscription enregistrée. Vérifiez votre e-mail si demandé, puis attendez la validation administrateur.',error?'error':'success')},'secondary');c.append(actions);c.append(el('p','Un compte nouvellement créé doit être approuvé par l’administrateur.','muted small'));main.append(c);app.append(main)}
 function pending(){const main=el('main');const c=box(main,'Accès en attente');const statuses={pending:'Votre inscription attend la validation de l’administrateur.',rejected:'Votre demande a été refusée.',suspended:'Votre accès a été suspendu.'};msg(c,statuses[state.profile.status]||'Accès indisponible','error');btn(c,'Actualiser mon statut',async()=>{try{await refreshProfile();if(state.profile.status==='approved')await loadQuiz();render()}catch(e){alert(e.message)}});app.append(main)}
 const standardSpecialties = [
   'Médecine familiale', 'Médecine interne', 'Pédiatrie',
@@ -40,8 +46,10 @@ function startModule(specialty, view = 'quiz') {
 }
 
 function home() {
-  const main = el('main');
-  const overview = box(main, 'Mon tableau de bord');
+  const main = el('main',undefined,'dashboard');
+  main.append(el('h1','Mon tableau de bord'));
+  const overview = box(main);
+  overview.classList.add('dashboard-overview');
   const done = state.results.length;
   const correct = state.results.filter(result => result.is_correct).length;
   const stats = el('div', undefined, 'grid');
