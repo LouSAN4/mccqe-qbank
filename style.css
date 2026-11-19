@@ -131,3 +131,17 @@ td, th { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); 
 @media (max-width: 385px) {
   .auth-card .inline > button { width: 100%; }
 }
+.choice.answer-correct {
+  color: #134b36;
+  background: #e4f5e9;
+  border-color: #438461;
+  box-shadow: inset 4px 0 #438461;
+}
+.choice.answer-incorrect {
+  color: #792932;
+  background: #fcebed;
+  border-color: #bd6670;
+  box-shadow: inset 4px 0 #bd6670;
+}
+.answer-label { display: block; margin-top: 4px; font-size: .85rem; font-weight: 700; }
+.feedback h3 { margin-top: 0; }
