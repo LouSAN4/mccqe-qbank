@@ -118,18 +118,20 @@ function addSpecialtySuggestions(parent, input) {
   parent.append(list);
 }
 function filteredQuestions(){return state.questions.filter(q=>matchesSource(q)&&(state.specialty==='Toutes'||moduleName(q)===state.specialty))}
-async function quiz(errorsOnly=false){const main=el('main');const list=errorsOnly?state.questions.filter(q=>matchesSource(q)&&state.results.some(r=>r.question_id===q.id&&!r.is_correct)):filteredQuestions();const c=box(main,errorsOnly?'Révision des erreurs':'Entraînement QCM');if(!list.length){c.append(el('p',errorsOnly?'Aucune erreur enregistrée.':'Aucune question dans cette spécialité.'));app.append(main);return}state.index=Math.min(state.index,list.length-1);const q=list[state.index];c.append(el('p',`Question ${state.index+1} / ${list.length} · ${q.specialty}`,'muted'));const [stem,illustration]=q.stem.split('\n\n[QCM_IMAGE_JPEG]\n');
-c.append(el('h2',stem));
+async function quiz(errorsOnly=false){const main=el('main');const list=errorsOnly?state.questions.filter(q=>matchesSource(q)&&state.results.some(r=>r.question_id===q.id&&!r.is_correct)):filteredQuestions();const c=box(main,errorsOnly?'Révision des erreurs':'Entraînement QCM');c.classList.add('quiz-card');if(!list.length){c.append(el('p',errorsOnly?'Aucune erreur enregistrée.':'Aucune question dans cette spécialité.'));app.append(main);return}state.index=Math.min(state.index,list.length-1);const q=list[state.index];c.append(el('p',`Question ${state.index+1} / ${list.length} · ${q.specialty}`,'quiz-position'));const [stem,illustration]=q.stem.split('\n\n[QCM_IMAGE_JPEG]\n');
+const prompt=el('section',undefined,'quiz-prompt');
+prompt.append(el('h3','Énoncé'),el('p',stem));
+c.append(prompt);
 if(illustration&&/^[A-Za-z0-9+/]+={0,2}$/.test(illustration)){
   const image=el('img',undefined,'quiz-illustration');
   image.alt='Illustration de la question';
   image.src='data:image/jpeg;base64,'+illustration;
   c.append(image);
-}const existing=state.results.find(r=>r.question_id===q.id);const options=el('div');c.append(options);let selected=state.selected;const correction=state.feedback?.questionId===q.id?state.feedback.data:null;for(const opt of q.options){const b=btn(options,`${opt.letter}. ${opt.label}`,()=>{if(existing||state.feedback)return;state.selected=opt.letter;render()},'choice'+(selected===opt.letter?' selected':''));if(correction){
+}const existing=state.results.find(r=>r.question_id===q.id);const options=el('div',undefined,'quiz-options');options.setAttribute('role','group');options.setAttribute('aria-label','Propositions');c.append(options);let selected=state.selected;const correction=state.feedback?.questionId===q.id?state.feedback.data:null;for(const opt of q.options){const b=btn(options,'',()=>{if(existing||state.feedback)return;state.selected=opt.letter;render()},'choice'+(selected===opt.letter?' selected':''));const labelText=el('span',opt.label,'choice-text');b.append(el('span',opt.letter,'choice-letter'),labelText);b.setAttribute('aria-pressed',String(selected===opt.letter));if(correction){
   const correct=opt.letter===correction.correct;
   b.classList.add(correct?'answer-correct':'answer-incorrect');
   const label=correct?'Bonne réponse':'Réponse incorrecte';
-  b.append(el('span',opt.letter===correction.selected?label+' · Votre choix':label,'answer-label'));
+  labelText.append(el('span',opt.letter===correction.selected?label+' · Votre choix':label,'answer-label'));
 }b.disabled=!!existing||!!state.feedback}const navigation=el('div',undefined,'inline quiz-navigation');
 const previous=btn(navigation,'Précédente',()=>{state.index--;state.selected=null;state.feedback=null;render()},'secondary');
 previous.disabled=state.index===0;
