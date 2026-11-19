@@ -102,7 +102,14 @@ function addSpecialtySuggestions(parent, input) {
   parent.append(list);
 }
 function filteredQuestions(){return state.questions.filter(q=>state.specialty==='Toutes'||q.specialty===state.specialty)}
-async function quiz(errorsOnly=false){const main=el('main');const list=errorsOnly?state.questions.filter(q=>state.results.some(r=>r.question_id===q.id&&!r.is_correct)):filteredQuestions();const c=box(main,errorsOnly?'Révision des erreurs':'Entraînement QCM');if(!list.length){c.append(el('p',errorsOnly?'Aucune erreur enregistrée.':'Aucune question dans cette spécialité.'));app.append(main);return}state.index=Math.min(state.index,list.length-1);const q=list[state.index];c.append(el('p',`Question ${state.index+1} / ${list.length} · ${q.specialty}`,'muted'));c.append(el('h2',q.stem));const existing=state.results.find(r=>r.question_id===q.id);const options=el('div');c.append(options);let selected=state.selected;const correction=state.feedback?.questionId===q.id?state.feedback.data:null;for(const opt of q.options){const b=btn(options,`${opt.letter}. ${opt.label}`,()=>{if(existing||state.feedback)return;state.selected=opt.letter;render()},'choice'+(selected===opt.letter?' selected':''));if(correction){
+async function quiz(errorsOnly=false){const main=el('main');const list=errorsOnly?state.questions.filter(q=>state.results.some(r=>r.question_id===q.id&&!r.is_correct)):filteredQuestions();const c=box(main,errorsOnly?'Révision des erreurs':'Entraînement QCM');if(!list.length){c.append(el('p',errorsOnly?'Aucune erreur enregistrée.':'Aucune question dans cette spécialité.'));app.append(main);return}state.index=Math.min(state.index,list.length-1);const q=list[state.index];c.append(el('p',`Question ${state.index+1} / ${list.length} · ${q.specialty}`,'muted'));const [stem,illustration]=q.stem.split('\n\n[QCM_IMAGE_JPEG]\n');
+c.append(el('h2',stem));
+if(illustration&&/^[A-Za-z0-9+/]+={0,2}$/.test(illustration)){
+  const image=el('img',undefined,'quiz-illustration');
+  image.alt='Illustration de la question';
+  image.src='data:image/jpeg;base64,'+illustration;
+  c.append(image);
+}const existing=state.results.find(r=>r.question_id===q.id);const options=el('div');c.append(options);let selected=state.selected;const correction=state.feedback?.questionId===q.id?state.feedback.data:null;for(const opt of q.options){const b=btn(options,`${opt.letter}. ${opt.label}`,()=>{if(existing||state.feedback)return;state.selected=opt.letter;render()},'choice'+(selected===opt.letter?' selected':''));if(correction){
   const correct=opt.letter===correction.correct;
   b.classList.add(correct?'answer-correct':'answer-incorrect');
   const label=correct?'Bonne réponse':'Réponse incorrecte';
