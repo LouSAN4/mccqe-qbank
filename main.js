@@ -107,7 +107,15 @@ async function quiz(errorsOnly=false){const main=el('main');const list=errorsOnl
   b.classList.add(correct?'answer-correct':'answer-incorrect');
   const label=correct?'Bonne réponse':'Réponse incorrecte';
   b.append(el('span',opt.letter===correction.selected?label+' · Votre choix':label,'answer-label'));
-}b.disabled=!!existing||!!state.feedback}const feedback=el('div');c.append(feedback);const actions=el('div',undefined,'inline');if(existing||state.feedback){if(state.feedback&&state.feedback.questionId===q.id){showFeedback(feedback,state.feedback.data)}else{btn(actions,'Voir la correction',async()=>{const {data,error}=await db.rpc('submit_answer',{p_question_id:q.id,p_letter:existing.selected});if(error)msg(feedback,error.message);else{state.feedback={questionId:q.id,data};render()}},'secondary')}}else{const send=btn(actions,'Valider ma réponse',async()=>{send.disabled=true;const {data,error}=await db.rpc('submit_answer',{p_question_id:q.id,p_letter:state.selected});if(error){alert(error.message);send.disabled=false;return}state.feedback={questionId:q.id,data};await loadQuiz();render()});send.disabled=!state.selected}btn(actions,'Précédente',()=>{state.index=Math.max(0,state.index-1);state.selected=null;state.feedback=null;render()},'secondary');btn(actions,'Suivante',()=>{state.index=(state.index+1)%list.length;state.selected=null;state.feedback=null;render()},'secondary');c.append(actions);app.append(main)}
+}b.disabled=!!existing||!!state.feedback}const navigation=el('div',undefined,'inline quiz-navigation');
+const previous=btn(navigation,'Précédente',()=>{state.index--;state.selected=null;state.feedback=null;render()},'secondary');
+previous.disabled=state.index===0;
+const next=btn(navigation,'Suivante',()=>{state.index=(state.index+1)%list.length;state.selected=null;state.feedback=null;render()},'secondary');
+next.disabled=list.length===1;
+c.append(navigation);
+const actions=el('div',undefined,'inline');
+const feedback=el('div');
+c.append(actions,feedback);if(existing||state.feedback){if(state.feedback&&state.feedback.questionId===q.id){showFeedback(feedback,state.feedback.data)}else{btn(actions,'Voir la correction',async()=>{const {data,error}=await db.rpc('submit_answer',{p_question_id:q.id,p_letter:existing.selected});if(error)msg(feedback,error.message);else{state.feedback={questionId:q.id,data};render()}},'secondary')}}else{const send=btn(actions,'Valider ma réponse',async()=>{send.disabled=true;const {data,error}=await db.rpc('submit_answer',{p_question_id:q.id,p_letter:state.selected});if(error){alert(error.message);send.disabled=false;return}state.feedback={questionId:q.id,data};await loadQuiz();render()});send.disabled=!state.selected}app.append(main)}
 function splitExplanation(text) {
   const detail = /^[ \t]*Plus de détails[ \t]*:?[ \t]*$/im.exec(text);
   if (!detail) return { main: text, other: '', references: '' };

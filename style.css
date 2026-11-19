@@ -145,3 +145,4 @@ td, th { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); 
 }
 .answer-label { display: block; margin-top: 4px; font-size: .85rem; font-weight: 700; }
 .feedback h3 { margin-top: 0; }
+.quiz-navigation { margin: 12px 0 16px; }
