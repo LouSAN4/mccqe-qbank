@@ -28,11 +28,11 @@ const standardSpecialties = [
   'Éthique',
 ];
 
-const sourceNames = ['Toutes les sources', 'AMBOSS', 'Source non renseignée'];
+const sourceNames = ['Toutes les sources', 'AMBOSS', 'UWorld', 'Source non renseignée'];
 let selectedSource = sourceNames[0];
 
 function matchesSource(question) {
-  return selectedSource === sourceNames[0] || (question.source || sourceNames[2]) === selectedSource;
+  return selectedSource === sourceNames[0] || (question.source || 'Source non renseignée') === selectedSource;
 }
 
 function moduleName(question) {
@@ -52,7 +52,14 @@ function startModule(specialty, view='quiz'){
 }
 function configureSession(){
   const main=el('main'), setup=box(main,'Configurer ma séance');
-  setup.append(el('p',(state.specialty==='Toutes'?'Toutes les spécialités':state.specialty)+' · '+selectedSource,'muted'));
+  if (state.specialty === 'Éthique') {
+    setup.append(el('p', 'Éthique', 'muted'));
+    const sources = sourceNames.filter(name => name !== 'Source non renseignée' || state.questions.some(q => moduleName(q) === 'Éthique' && !q.source));
+    const source = selectField(setup, 'Source des questions', sources.map(name => [name, name]), selectedSource);
+    source.onchange = () => { selectedSource = source.value; update(); };
+  } else {
+    setup.append(el('p',(state.specialty==='Toutes'?'Toutes les spécialités':state.specialty)+' · '+selectedSource,'muted'));
+  }
   const mode=selectField(setup,'Questions à inclure',[
     ['all','Toutes les questions'],['wrong','Questions ratées'],['new','Questions sans réponse']
   ],state.mode);
