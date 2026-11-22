@@ -28,7 +28,7 @@ const standardSpecialties = [
   'Éthique',
 ];
 
-const sourceNames = ['Toutes les sources', 'AMBOSS', 'UWorld', 'Source non renseignée'];
+const sourceNames = ['Toutes les sources', 'AMBOSS', 'UWorld', 'CMPA', 'Source non renseignée'];
 let selectedSource = sourceNames[0];
 
 function matchesSource(question, source=selectedSource) {
@@ -205,7 +205,21 @@ function addSpecialtySuggestions(parent, input) {
 function filteredQuestions(){return state.questions.filter(q=>matchesSource(q,state.specialty==='Éthique'?state.ethicsSource:selectedSource)&&(state.specialty==='Toutes'||moduleName(q)===state.specialty))}
 function quiz(){
   const practice=state.practice, list=practice.questions;
-  const main=el('main'), c=box(main,'Entraînement QCM');
+  const main=el('main'), c=box(main);
+  const toolbar=el('div',undefined,'exam-toolbar');
+  const jumpLabel=el('label','Aller à la question');
+  const jump=el('select');
+  list.forEach((item,i)=>{
+    const option=el('option',String(i+1)+(practice.answers.has(item.id)?' ✓':''));
+    option.value=String(i);
+    jump.append(option);
+  });
+  jump.value=String(state.index);
+  jump.disabled=practice.busy;
+  jump.onchange=()=>{state.index=Number(jump.value);state.selected=null;state.feedback=null;render()};
+  jumpLabel.append(jump);
+  toolbar.append(jumpLabel);
+  c.append(toolbar);
   c.classList.add('quiz-card');const q=list[state.index];c.append(el('p',`Question ${state.index+1} / ${list.length} · ${q.specialty}`,'quiz-position'));const [stem,illustration]=q.stem.split('\n\n[QCM_IMAGE_JPEG]\n');
 const prompt=el('section',undefined,'quiz-prompt');
 prompt.append(el('h3','Énoncé'),el('p',stem));
@@ -215,7 +229,7 @@ if(illustration&&/^[A-Za-z0-9+/]+={0,2}$/.test(illustration)){
   image.alt='Illustration de la question';
   image.src='data:image/jpeg;base64,'+illustration;
   c.append(image);
-}const correction=practice.answers.get(q.id);const options=el('div',undefined,'quiz-options');options.setAttribute('role','group');options.setAttribute('aria-label','Propositions');c.append(options);const selected=correction?.selected??state.selected;for(const opt of q.options){const b=btn(options,'',()=>{if(correction||practice.busy)return;state.selected=opt.letter;render()},'choice'+(selected===opt.letter?' selected':''));const labelText=el('span',opt.label,'choice-text');b.append(el('span',opt.letter,'choice-letter'),labelText);b.setAttribute('aria-pressed',String(selected===opt.letter));if(correction){
+}const correction=practice.answers.get(q.id);const options=el('div',undefined,'quiz-options');options.setAttribute('role','group');options.setAttribute('aria-label','Propositions');c.append(el('h3','Propositions','exam-options-title'),options);const selected=correction?.selected??state.selected;for(const opt of q.options){const b=btn(options,'',()=>{if(correction||practice.busy)return;state.selected=opt.letter;render()},'choice'+(selected===opt.letter?' selected':''));const labelText=el('span',opt.label,'choice-text');b.append(el('span',opt.letter,'choice-letter'),labelText);b.setAttribute('aria-pressed',String(selected===opt.letter));if(correction){
   const correct=opt.letter===correction.correct;
   b.classList.add(correct?'answer-correct':'answer-incorrect');
   const label=correct?'Bonne réponse':'Réponse incorrecte';
@@ -228,10 +242,16 @@ if(state.index===list.length-1){
 }else{
   btn(navigation,'Suivante',()=>{state.index++;state.selected=null;render()},'secondary').disabled=practice.busy;
 }
-c.append(navigation);
+
 const actions=el('div',undefined,'inline'), feedback=el('div');
 c.append(actions,feedback);
-if(correction)showFeedback(feedback,correction);
+if(correction){
+  const details=el('details',undefined,'exam-correction');
+  details.open=true;
+  details.append(el('summary','Réponse et explication'));
+  showFeedback(details,correction);
+  feedback.append(details);
+}
 else {
     const send=btn(actions,'Valider ma réponse',async()=>{
       const letter=state.selected;
@@ -248,6 +268,7 @@ else {
     });
     send.disabled=!state.selected||practice.busy;
   }
+c.append(navigation);
 app.append(main);
 }
 function splitExplanation(text) {
@@ -282,4 +303,5 @@ function showFeedback(parent, data) {
 async function admin(){const main=el('main');const users=box(main,'Gestion des inscriptions');const {data,error}=await db.from('profiles').select('id,email,role,status,created_at').order('created_at',{ascending:false});if(error){msg(users,error.message);app.append(main);return}for(const u of data){const line=el('div',undefined,'card');line.append(el('strong',u.email),el('p',`${u.role} · ${u.status}`,'muted small'));if(u.role!=='admin'){const row=el('div',undefined,'inline');for(const [label,status] of [['Approuver','approved'],['Refuser','rejected'],['Suspendre','suspended']])btn(row,label,async()=>{const {error}=await db.rpc('admin_set_status',{p_user_id:u.id,p_status:status});if(error)alert(error.message);else render()},status==='suspended'?'danger':'secondary');line.append(row)}users.append(line)}const add=box(main,'Ajouter un QCM');const specialty=field(add,'Spécialité','text','Choisir ou saisir une spécialité');addSpecialtySuggestions(add,specialty);const sourceLabel=el('label','Source');const sourceSelect=el('select');for(const source of sourceNames.slice(1).reverse()){const item=el('option',source);item.value=source;sourceSelect.append(item)}sourceLabel.append(sourceSelect);add.append(sourceLabel);const stem=field(add,'Énoncé','textarea','Cas clinique et question');const explanation=field(add,'Explication générale','textarea','Explication de la bonne réponse');const optionFields=[];for(const letter of ['A','B','C','D']){const text=field(add,`Proposition ${letter}`,'textarea');const rationale=field(add,`Explication de ${letter}`,'textarea');optionFields.push({letter,text,rationale})}const correct=el('select');for(const letter of ['A','B','C','D']){const o=el('option',`Bonne réponse : ${letter}`);o.value=letter;correct.append(o)}add.append(correct);const note=el('div');add.append(note);btn(add,'Enregistrer le QCM',async()=>{note.replaceChildren();const options=optionFields.map(x=>({letter:x.letter,label:x.text.value,is_correct:x.letter===correct.value,rationale:x.rationale.value}));if(options.some(o=>!o.label.trim())){msg(note,'Complétez toutes les propositions.');return}const {error}=await db.rpc('admin_add_question',{p_specialty:specialty.value,p_stem:stem.value,p_explanation:explanation.value,p_options:options,p_source:sourceSelect.value});if(error)msg(note,error.message);else{await loadQuiz();state.view='admin';render()}});app.append(main)}
 function render(){clear();header();if(!db){const main=el('main');msg(main,'Configuration manquante : renseignez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.');app.append(main);return}if(!state.session){login();return}if(!state.profile){const main=el('main');main.append(el('p','Chargement…'));app.append(main);return}if(state.profile.status!=='approved'){pending();return}if(state.view==='admin'&&state.profile.role==='admin'){admin().catch(e=>alert(e.message));return}if(state.view==='ethics'){ethics();return}if(state.view==='setup'){configureSession();return}if(state.view==='quiz'&&state.practice){quiz();return}home()}
 async function bootstrap(){if(!db){render();return}const {data:{session}}=await db.auth.getSession();state.session=session;if(session){try{await refreshProfile();if(state.profile.status==='approved')await loadQuiz()}catch(e){console.error(e);alert('Erreur de chargement : '+e.message)}}render();db.auth.onAuthStateChange((_event,newSession)=>{if(newSession?.user?.id===state.session?.user?.id)return;state.session=newSession;state.practice=null;state.profile=null;state.questions=[];state.results=[];state.view='home';selectedSource=sourceNames[0];if(!newSession){render();return}setTimeout(async()=>{try{await refreshProfile();if(state.profile.status==='approved')await loadQuiz()}catch(e){alert(e.message)}render()},0)})}bootstrap();
+
 
