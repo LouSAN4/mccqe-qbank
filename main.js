@@ -298,6 +298,20 @@ function showFeedback(parent, data) {
     }
   }
   if (references) panel.append(el('p',references));
+  if (data.images?.length) {
+    panel.append(el('h3', data.images.length === 1 ? 'Illustration' : 'Illustrations'));
+    for (const [index, item] of data.images.entries()) {
+      const figure = el('figure');
+      figure.style.margin = '1rem 0';
+      const image = el('img');
+      image.alt = 'Illustration ' + (index + 1) + ' du QCM, page ' + item.page;
+      image.loading = 'lazy';
+      image.style.cssText = 'display:block;max-width:100%;height:auto;margin-inline:auto';
+      image.src = 'data:image/webp;base64,' + item.image;
+      figure.append(image, el('figcaption', 'Illustration ' + (index + 1) + ' · PDF p. ' + item.page, 'muted small'));
+      panel.append(figure);
+    }
+  }
   parent.append(panel);
 }
 async function admin(){const main=el('main');const users=box(main,'Gestion des inscriptions');const {data,error}=await db.from('profiles').select('id,email,role,status,created_at').order('created_at',{ascending:false});if(error){msg(users,error.message);app.append(main);return}for(const u of data){const line=el('div',undefined,'card');line.append(el('strong',u.email),el('p',`${u.role} · ${u.status}`,'muted small'));if(u.role!=='admin'){const row=el('div',undefined,'inline');for(const [label,status] of [['Approuver','approved'],['Refuser','rejected'],['Suspendre','suspended']])btn(row,label,async()=>{const {error}=await db.rpc('admin_set_status',{p_user_id:u.id,p_status:status});if(error)alert(error.message);else render()},status==='suspended'?'danger':'secondary');line.append(row)}users.append(line)}const add=box(main,'Ajouter un QCM');const specialty=field(add,'Spécialité','text','Choisir ou saisir une spécialité');addSpecialtySuggestions(add,specialty);const sourceLabel=el('label','Source');const sourceSelect=el('select');for(const source of sourceNames.slice(1).reverse()){const item=el('option',source);item.value=source;sourceSelect.append(item)}sourceLabel.append(sourceSelect);add.append(sourceLabel);const stem=field(add,'Énoncé','textarea','Cas clinique et question');const explanation=field(add,'Explication générale','textarea','Explication de la bonne réponse');const optionFields=[];for(const letter of ['A','B','C','D']){const text=field(add,`Proposition ${letter}`,'textarea');const rationale=field(add,`Explication de ${letter}`,'textarea');optionFields.push({letter,text,rationale})}const correct=el('select');for(const letter of ['A','B','C','D']){const o=el('option',`Bonne réponse : ${letter}`);o.value=letter;correct.append(o)}add.append(correct);const note=el('div');add.append(note);btn(add,'Enregistrer le QCM',async()=>{note.replaceChildren();const options=optionFields.map(x=>({letter:x.letter,label:x.text.value,is_correct:x.letter===correct.value,rationale:x.rationale.value}));if(options.some(o=>!o.label.trim())){msg(note,'Complétez toutes les propositions.');return}const {error}=await db.rpc('admin_add_question',{p_specialty:specialty.value,p_stem:stem.value,p_explanation:explanation.value,p_options:options,p_source:sourceSelect.value});if(error)msg(note,error.message);else{await loadQuiz();state.view='admin';render()}});app.append(main)}
