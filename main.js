@@ -140,24 +140,46 @@ function eligibleQuestions(questions,results,mode){
   return questions.filter(q=>
     (mode==='all'||(mode==='wrong'?latest.get(q.id)?.is_correct===false:!latest.has(q.id))));
 }
+function progressCard(parent, title, segments, value, caption) {
+  const card = box(parent, title);
+  const total = segments.reduce((sum, segment) => sum + segment.count, 0);
+  const ring = el('div', undefined, 'progress-ring');
+  ring.setAttribute('aria-hidden', 'true');
+  if (total) {
+    let count = 0;
+    const stops = segments.filter(segment => segment.count).map(segment => {
+      const start = count / total * 100;
+      count += segment.count;
+      return segment.color + ' ' + start + '% ' + (count / total * 100) + '%';
+    });
+    ring.style.background = 'conic-gradient(' + stops.join(', ') + ')';
+  }
+  const center = el('div', undefined, 'progress-center');
+  center.append(el('strong', value), el('span', caption));
+  ring.append(center);
+  const legend = el('ul', undefined, 'progress-legend');
+  for (const {label, count, color} of segments) {
+    const row = el('li');
+    const marker = el('i');
+    marker.style.backgroundColor = color;
+    row.append(marker, el('span', label), el('strong', String(count)));
+    legend.append(row);
+  }
+  card.append(ring, legend);
+}
 function home() {
   const main = el('main',undefined,'dashboard');
   main.append(el('h1','Mon tableau de bord'));
-  const overview = box(main);
-  overview.classList.add('dashboard-overview');
-  const done = state.results.length;
-  const correct = state.results.filter(result => result.is_correct).length;
-  const stats = el('div', undefined, 'grid');
-  for (const [label, value] of [
-    ['QCM disponibles', state.questions.length],
-    ['QCM réalisés', done],
-    ['Taux de réussite', done ? Math.round(correct / done * 100) + ' %' : '—'],
-  ]) {
-    const stat = el('div', undefined, 'stat');
-    stat.append(el('strong', String(value)), el('span', label));
-    stats.append(stat);
-  }
-  overview.append(stats);
+  const pool = state.questions.filter(q => matchesSource(q));
+  const latest = new Map(state.results.map(r => [r.question_id, r.is_correct]));
+  const done = pool.filter(q => latest.has(q.id)).length;
+  const correct = pool.filter(q => latest.get(q.id) === true).length;
+  const remaining = pool.length - done;
+  const actions = el('div', undefined, 'inline dashboard-actions');
+  if (state.practice) btn(actions, 'Reprendre ma séance', () => {state.view='quiz';render();});
+  btn(actions, 'Créer une séance', () => startModule('Toutes'), state.practice ? 'secondary' : '').disabled = !pool.length;
+  btn(actions, 'Réviser mes erreurs', () => startModule('Toutes', 'errors'), 'secondary').disabled = done === correct;
+  main.append(actions);
 
   const sources = box(main, 'Sources');
   const sourceButtons = el('div', undefined, 'inline');
@@ -166,6 +188,17 @@ function home() {
     button.setAttribute('aria-pressed', String(source === selectedSource));
   }
   sources.append(sourceButtons);
+  const charts = el('div', undefined, 'progress-grid');
+  main.append(charts);
+  progressCard(charts, 'Performance aux QCM', [
+    {label:'Bonnes réponses', count:correct, color:'#279b62'},
+    {label:'Mauvaises réponses', count:done - correct, color:'#cf4561'},
+    {label:'Sans réponse', count:remaining, color:'#efa92e'},
+  ], done ? Math.round(100 * correct / done) + ' %' : '—', 'de réussite');
+  progressCard(charts, 'Utilisation de la banque', [
+    {label:'QCM réalisés', count:done, color:'#6556bf'},
+    {label:'QCM à faire', count:remaining, color:'#3685ce'},
+  ], done + ' / ' + pool.length, 'QCM réalisés');
   const section = box(main, 'Choisir un module');
   const modules = el('div', undefined, 'module-grid');
   const answeredIds = new Set(state.results.map(answer => answer.question_id));
@@ -184,10 +217,6 @@ function home() {
     modules.append(module);
   }
   section.append(modules);
-  const actions = el('div', undefined, 'module-actions');
-  btn(actions, 'Réviser mes erreurs', () => startModule('Toutes', 'errors'), 'secondary');
-  if(state.practice)btn(actions,'Reprendre ma séance en cours',()=>{state.view='quiz';render()},'secondary');
-  section.append(actions);
   app.append(main);
 }
 

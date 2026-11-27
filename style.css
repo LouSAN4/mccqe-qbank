@@ -241,3 +241,15 @@ td, th { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); 
 .quiz-card .quiz-options + .inline { margin-top:14px; }
 @media(max-width:540px){.quiz-navigation > button { flex:1; }.quiz-card { min-width:0; }.quiz-illustration { max-width:100%; }}
 
+
+.dashboard-actions { margin-bottom: 1.25rem; }
+.progress-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.progress-grid .card { min-width: 0; margin: 0; }
+.progress-ring { width: min(100%, 11rem); aspect-ratio: 1; margin: 1.3rem auto; display: grid; place-items: center; border-radius: 50%; background: #e5e8eb; }
+.progress-center { width: 73%; aspect-ratio: 1; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+.progress-center strong { font-size: 1.35rem; }
+.progress-center span { font-size: .875rem; }
+.progress-legend { list-style: none; padding: 0; margin: 0 auto; max-width: 20rem; }
+.progress-legend li { display: grid; grid-template-columns: .75rem 1fr auto; align-items: center; gap: .65rem; padding: .3rem 0; }
+.progress-legend i { width: .75rem; height: .75rem; border-radius: 50%; }
+@media (max-width: 700px) { .progress-grid { grid-template-columns: 1fr; } }
